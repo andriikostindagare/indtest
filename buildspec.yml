@@ -1,0 +1,21 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      golang: 1.17
+  pre_build:
+    commands:
+      - echo Fetching required Go modules...
+      - go mod download
+  build:
+    commands:
+      - echo Building the project...
+      - go build -v ./...
+  post_build:
+    commands:
+      - echo Running tests...
+      - go test -v ./...
+artifacts:
+  files:
+    - '**/*'
