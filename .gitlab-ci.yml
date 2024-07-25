@@ -1,0 +1,43 @@
+stages:
+  - install
+  - pre_build
+  - build
+  - post_build
+
+variables:
+  GO_VERSION: "1.17"
+
+before_script:
+  - echo "Using Go version $GO_VERSION"
+  - apt-get update && apt-get install -y wget
+  - wget https://golang.org/dl/go${GO_VERSION}.linux-amd64.tar.gz
+  - tar -C /usr/local -xzf go${GO_VERSION}.linux-amd64.tar.gz
+  - export PATH=$PATH:/usr/local/go/bin
+  - go version
+
+install:
+  stage: install
+  script:
+    - echo "Installing dependencies..."
+
+pre_build:
+  stage: pre_build
+  script:
+    - echo "Fetching required Go modules..."
+    - go mod download
+
+build:
+  stage: build
+  script:
+    - echo "Building the project..."
+    - go build -v ./...
+
+post_build:
+  stage: post_build
+  script:
+    - echo "Running tests..."
+    - go test -v ./...
+
+artifacts:
+  paths:
+    - '**/*'
