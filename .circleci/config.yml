@@ -1,78 +1,80 @@
-# This config was automatically generated from your source code
-# Stacks detected: artifact:go-executable:,cicd:gitlab-workflows:.,deps:go:.
 version: 2.1
+
+executors:
+  docker-executor:
+    docker:
+      - image: docker:19.03.12
+    working_directory: ~/project
+
 jobs:
-  test-go:
-    # Install go modules and run tests
-    docker:
-      - image: cimg/go:1.20
-    steps:
-      - checkout
-      - restore_cache:
-          key: go-mod-{{ checksum "go.sum" }}
-      - run:
-          name: Download Go modules
-          command: go mod download
-      - run:
-          name: Print go mod help instructions
-          command: "echo \"go mod download will fail if you have private repositories \nOne way to fix this for private go modules that are hosted in github:\n  1. Add a GITHUB_TOKEN and GITHUB_USER to an org context. Please refer to https://circleci.com/docs/contexts/ for more informaiton on how to use contexts.\n  2. Add a .circleci/config.yml to your repository or use this config.yml as a starting template\n  3. Configure the jobs to use the newly created context which includes GITHUB_TOKEN and GITHUB_USER  \n  4. Before downloading the modules you will need to add a step to execute \\\"go env -w GOPRIVATE=github.com/<OrgNameHere>\\\". \n\tThis allows go mod to install private repos under OrgNameHere.\n  5. You will also need to run \\\"git config --global url.\\\"https://$GITHUB_USER:$GITHUB_TOKEN@github.com/<OrgNameHere>/\\\".insteadOf \\\"https://github.com/<OrgNameHere>/\\\"\\\"\n  6. Finally include the \\\"go mod download\\\" it should be able to fetch your private libraries now. \nFor gitlab private go modules, follow the same instructions as above but include your GITLAB_TOKEN and GITLAB_USER.\nThen use gitlab.com instead of github.com in steps 4 and 5.\nSee https://go.dev/ref/mod#private-modules for more details.\""
-          when: on_fail
-      - save_cache:
-          key: go-mod-{{ checksum "go.sum" }}
-          paths:
-            - /home/circleci/go/pkg/mod
-      - run:
-          name: Run tests
-          command: gotestsum --junitfile junit.xml
-      - store_test_results:
-          path: junit.xml
-  build-go-executables:
-    # Build go executables and store them as artifacts
-    docker:
-      - image: cimg/go:1.20
-    steps:
-      - checkout
-      - restore_cache:
-          key: go-mod-{{ checksum "go.sum" }}
-      - run:
-          name: Download Go modules
-          command: go mod download
-      - run:
-          name: Print go mod help instructions
-          command: "echo \"go mod download will fail if you have private repositories \nOne way to fix this for private go modules that are hosted in github:\n  1. Add a GITHUB_TOKEN and GITHUB_USER to an org context. Please refer to https://circleci.com/docs/contexts/ for more informaiton on how to use contexts.\n  2. Add a .circleci/config.yml to your repository or use this config.yml as a starting template\n  3. Configure the jobs to use the newly created context which includes GITHUB_TOKEN and GITHUB_USER  \n  4. Before downloading the modules you will need to add a step to execute \\\"go env -w GOPRIVATE=github.com/<OrgNameHere>\\\". \n\tThis allows go mod to install private repos under OrgNameHere.\n  5. You will also need to run \\\"git config --global url.\\\"https://$GITHUB_USER:$GITHUB_TOKEN@github.com/<OrgNameHere>/\\\".insteadOf \\\"https://github.com/<OrgNameHere>/\\\"\\\"\n  6. Finally include the \\\"go mod download\\\" it should be able to fetch your private libraries now. \nFor gitlab private go modules, follow the same instructions as above but include your GITLAB_TOKEN and GITLAB_USER.\nThen use gitlab.com instead of github.com in steps 4 and 5.\nSee https://go.dev/ref/mod#private-modules for more details.\""
-          when: on_fail
-      - save_cache:
-          key: go-mod-{{ checksum "go.sum" }}
-          paths:
-            - /home/circleci/go/pkg/mod
-      - run:
-          name: Create the ~/artifacts directory if it doesn't exist
-          command: mkdir -p ~/artifacts
-      - run:
-          name: Build executables
-          command: go build -o ~/artifacts ./...
-      - store_artifacts:
-          path: ~/artifacts
-          destination: executables
-  deploy:
-    # This is an example deploy job, not actually used by the workflow
-    docker:
-      - image: cimg/base:stable
-    steps:
-      # Replace this with steps to deploy to users
-      - run:
-          name: deploy
-          command: '#e.g. ./deploy.sh'
-      - run:
-          name: found gitlab workflows config
-          command: ':'
-workflows:
   build-and-test:
+    docker:
+      - image: docker:19.03.12
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 19.03.12
+          docker_layer_caching: true
+      - run:
+          name: Install Docker Buildx
+          command: |
+            mkdir -p ~/.docker/cli-plugins/
+            curl -SL https://github.com/docker/buildx/releases/download/v0.5.1/buildx-v0.5.1.linux-amd64 -o ~/.docker/cli-plugins/docker-buildx
+            chmod +x ~/.docker/cli-plugins/docker-buildx
+            docker buildx create --use
+            docker buildx inspect --bootstrap
+      - restore_cache:
+          keys:
+            - docker-layer-cache-{{ .Branch }}-{{ .Revision }}
+            - docker-layer-cache-
+      - run:
+          name: Build and Test Docker Image
+          command: |
+            docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache -f Dockerfile.multistage --target=run-test-stage -t $CIRCLE_PROJECT_REPONAME:test .
+            docker run --rm $CIRCLE_PROJECT_REPONAME:test nosetests -v --with-xunit --xunit-file=/circle_artifacts/nosetests.xml --with-coverage --cover-html --cover-html-dir=/circle_artifacts/coverage_html/
+      - save_cache:
+          key: docker-layer-cache-{{ .Branch }}-{{ .Revision }}
+          paths:
+            - /tmp/.buildx-cache
+      - store_artifacts:
+          path: /circle_artifacts
+          destination: coverage_html
+
+  release:
+    docker:
+      - image: docker:19.03.12
+    steps:
+      - checkout
+      - setup_remote_docker:
+          version: 19.03.12
+          docker_layer_caching: true
+      - run:
+          name: Install Docker Buildx
+          command: |
+            mkdir -p ~/.docker/cli-plugins/
+            curl -SL https://github.com/docker/buildx/releases/download/v0.5.1/buildx-v0.5.1.linux-amd64 -o ~/.docker/cli-plugins/docker-buildx
+            chmod +x ~/.docker/cli-plugins/docker-buildx
+            docker buildx create --use
+            docker buildx inspect --bootstrap
+      - restore_cache:
+          keys:
+            - docker-layer-cache-{{ .Branch }}-{{ .Revision }}
+            - docker-layer-cache-
+      - run:
+          name: Build and Push Docker Image
+          command: |
+            docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}
+            docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache --push -t ${DOCKERHUB_USERNAME}/${CIRCLE_PROJECT_REPONAME}:${CIRCLE_TAG} .
+
+workflows:
+  build-test-and-release:
     jobs:
-      - test-go
-      - build-go-executables:
+      - build-and-test
+      - release:
           requires:
-            - test-go
-    # - deploy:
-    #     requires:
-    #       - build-go-executables
+            - build-and-test
+          filters:
+            branches:
+              only: main
+            tags:
+              only: /^v.*/
