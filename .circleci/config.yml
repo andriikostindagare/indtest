@@ -25,8 +25,8 @@ jobs:
       - run:
           name: Build and Test Docker Image
           command: |
-            docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache -f Dockerfile.multistage --target=run-test-stage --load -t ${CIRCLE_PROJECT_REPONAME,,}:test .
-            docker run --rm ${CIRCLE_PROJECT_REPONAME,,}:test nosetests -v --with-xunit --xunit-file=/circle_artifacts/nosetests.xml --with-coverage --cover-html --cover-html-dir=/circle_artifacts/coverage_html/
+            docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache -f Dockerfile.multistage --target=run-test-stage -t indtest:test .
+            docker run --rm indtest:test nosetests -v --with-xunit --xunit-file=/circle_artifacts/nosetests.xml --with-coverage --cover-html --cover-html-dir=/circle_artifacts/coverage_html/
       - save_cache:
           key: docker-layer-cache-{{ .Branch }}-{{ .Revision }}
           paths:
@@ -60,7 +60,7 @@ jobs:
           name: Build and Push Docker Image
           command: |
             docker login -u ${DOCKERHUB_USERNAME} -p ${DOCKERHUB_PASSWORD}
-            docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache --push -t ${DOCKERHUB_USERNAME}/${CIRCLE_PROJECT_REPONAME,,}:${CIRCLE_TAG} .
+            docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache --push -t ${DOCKERHUB_USERNAME}/${CIRCLE_PROJECT_REPONAME}:${CIRCLE_TAG} .
 
 workflows:
   build-test-and-release:
