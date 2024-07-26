@@ -1,30 +1,36 @@
-image: golang:1.17
+image: docker:latest
+
+services:
+  - docker:dind
 
 stages:
-  - install
-  - pre_build
   - build
-  - post_build
+  - lint
+  - test
 
-install:
-  stage: install
-  script:
-    - echo "Installing dependencies..."
+variables:
+  DOCKER_DRIVER: overlay2
 
-pre_build:
-  stage: pre_build
-  script:
-    - echo "Fetching required Go modules..."
-    - go mod download
+before_script:
+  - docker info
 
 build:
   stage: build
   script:
-    - echo "Building the project..."
-    - go build -v ./...
+    - docker build --target build-stage --tag my-app-build:latest .
+    - docker build --target run-test-stage --tag my-app-test:latest .
+    - docker build --tag my-app:latest .
 
-post_build:
-  stage: post_build
+lint:
+  stage: lint
+  dependencies:
+    - build
   script:
-    - echo "Running tests..."
-    - go test -v ./...
+    - docker run --rm my-app-build:latest golangci-lint run
+
+test:
+  stage: test
+  dependencies:
+    - build
+  script:
+    - docker run --rm my-app-test:latest
