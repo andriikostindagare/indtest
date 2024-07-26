@@ -1,23 +1,18 @@
 version: 2.1
 
-executors:
-  docker-executor:
-    docker:
-      - image: docker:19.03.12
-    working_directory: ~/project
-
 jobs:
   build-and-test:
     docker:
       - image: docker:19.03.12
     steps:
-      - checkout
       - setup_remote_docker:
           version: 19.03.12
           docker_layer_caching: true
+      - checkout
       - run:
-          name: Install Docker Buildx
+          name: Install Docker Buildx and curl
           command: |
+            apk add --no-cache curl
             mkdir -p ~/.docker/cli-plugins/
             curl -SL https://github.com/docker/buildx/releases/download/v0.5.1/buildx-v0.5.1.linux-amd64 -o ~/.docker/cli-plugins/docker-buildx
             chmod +x ~/.docker/cli-plugins/docker-buildx
@@ -44,13 +39,14 @@ jobs:
     docker:
       - image: docker:19.03.12
     steps:
-      - checkout
       - setup_remote_docker:
           version: 19.03.12
           docker_layer_caching: true
+      - checkout
       - run:
-          name: Install Docker Buildx
+          name: Install Docker Buildx and curl
           command: |
+            apk add --no-cache curl
             mkdir -p ~/.docker/cli-plugins/
             curl -SL https://github.com/docker/buildx/releases/download/v0.5.1/buildx-v0.5.1.linux-amd64 -o ~/.docker/cli-plugins/docker-buildx
             chmod +x ~/.docker/cli-plugins/docker-buildx
