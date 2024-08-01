@@ -20,7 +20,11 @@ RUN CGO_ENABLED=0 GOOS=linux go build -o /docker-gs-ping
 ##
 
 FROM build-stage AS run-test-stage
+
+# setup test output file
 RUN mkdir -p /test-results
+RUN touch /test-results/test-output.log
+
 RUN go test -v ./... | tee /test-results/test-output.log
 
 ##
