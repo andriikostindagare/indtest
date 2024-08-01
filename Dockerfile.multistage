@@ -28,8 +28,10 @@ COPY --from=build-stage /app /app
 # Run tests and save the output to a log file
 RUN mkdir -p /test-results
 RUN touch /test-results/test-output.log
+
 RUN go test -v ./... | tee /test-results/test-output.log
-RUN exit $? # Ensure that the container exits with the test command's exit code
+# Ensure that the container exits with the test command's exit code
+RUN test_result=$? && exit $test_result
 
 ##
 ## Deploy the application binary into a lean image

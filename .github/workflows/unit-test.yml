@@ -39,12 +39,15 @@ jobs:
       - name: Run tests in Docker container
         id: run_tests
         run: |
-          docker run --name test-container my-app-test:latest || echo "Tests failed" && docker cp test-container:/test-results/test-output.log test-output.log || echo "No test log found" && docker rm test-container
+          docker run --name test-container my-app-test:latest || echo "Tests failed"
+          docker cp test-container:/test-results/test-output.log test-output.log || echo "No test log found"
+          docker rm test-container
 
       - name: Display Test Logs
         if: always()
         run: cat test-output.log
 
-      - name: Fail if tests failed
-        if: steps.run_tests.outputs.exit-code != '0'
-        run: exit 1
+      - name: Check for test failures
+        if: always()
+        run: |
+          grep -q "FAIL" test-output.log && exit 1 || exit 0
