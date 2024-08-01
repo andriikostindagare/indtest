@@ -38,3 +38,11 @@ jobs:
       - name: Run tests in Docker container
         run: |
           docker run --rm my-app-test:latest
+
+      - name: Copy Test Logs
+        run: |
+          docker cp $(docker create my-app-test:latest):/test-results/test-output.log test-output.log
+
+      - name: Display Test Logs
+        if: failure()
+        run: cat test-output.log
