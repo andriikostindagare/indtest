@@ -50,4 +50,8 @@ jobs:
       - name: Check for test failures
         if: always()
         run: |
-          grep -q "FAIL" test-output.log && exit 1 || exit 0
+          if grep -q "FAIL" test-output.log; then
+            exit 1
+          else
+            exit 0
+          fi
