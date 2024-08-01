@@ -34,6 +34,7 @@ jobs:
           tags: my-app-test:latest
           cache-from: type=local,src=/tmp/.buildx-cache
           cache-to: type=local,dest=/tmp/.buildx-cache
+          load: true
 
       - name: Run tests in Docker container
         run: |
@@ -41,7 +42,9 @@ jobs:
 
       - name: Copy Test Logs
         run: |
-          docker cp $(docker create my-app-test:latest):/test-results/test-output.log test-output.log
+          container_id=$(docker create my-app-test:latest)
+          docker cp $container_id:/test-results/test-output.log test-output.log
+          docker rm $container_id
 
       - name: Display Test Logs
         if: failure()
