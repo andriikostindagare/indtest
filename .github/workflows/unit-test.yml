@@ -38,7 +38,8 @@ jobs:
 
       - name: Run tests in Docker container
         run: |
-          docker run --rm my-app-test:latest
+          container_id=$(docker create my-app-test:latest)
+          docker start -a $container_id
 
       - name: Copy Test Logs
         run: |
