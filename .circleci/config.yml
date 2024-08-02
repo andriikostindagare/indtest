@@ -23,41 +23,17 @@ jobs:
             - docker-layer-cache-{{ .Branch }}-{{ .Revision }}
             - docker-layer-cache-
       - run:
-          name: Build Docker Image
+          name: Build and Test Docker Image
           command: |
-            docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache --load -f Dockerfile.multistage --target=run-test-stage -t indtest:test .
-      - run:
-          name: Run Tests in Docker Container
-          command: |
-            docker run --name test-container indtest:test || echo "Tests failed"
-      - run:
-          name: Copy Test Logs
-          command: |
-            docker cp test-container:/test-results/test-output.log test-output.log || echo "No test log found"
-      - run:
-          name: Remove Test Container
-          command: |
-            docker rm test-container || echo "No container to remove"
-      - run:
-          name: Display and Check Test Results
-          command: |
-            if grep -q "FAIL" test-output.log; then
-              echo "Test failures detected:"
-              grep -A 10 "FAIL" test-output.log  # Display the failures
-              exit 1
-            else
-              echo "All tests passed."
-            fi
-      - run:
-          name: Display All Test Logs
-          command: cat test-output.log
+            docker buildx build --cache-from=type=local,src=/tmp/.buildx-cache --cache-to=type=local,dest=/tmp/.buildx-cache -f Dockerfile.multistage --target=run-test-stage -t indtest:test .
+            docker run --rm indtest:test nosetests -v --with-xunit --xunit-file=/circle_artifacts/nosetests.xml --with-coverage --cover-html --cover-html-dir=/circle_artifacts/coverage_html/
       - save_cache:
           key: docker-layer-cache-{{ .Branch }}-{{ .Revision }}
           paths:
             - /tmp/.buildx-cache
       - store_artifacts:
-          path: test-output.log
-          destination: test-output.log
+          path: /circle_artifacts
+          destination: coverage_html
 
   release:
     docker:
