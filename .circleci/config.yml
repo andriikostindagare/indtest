@@ -31,9 +31,10 @@ jobs:
           command: |
             docker run --name test-container indtest:test || echo "Tests failed"
       - run:
-          name: Copy Test Logs
+          name: Copy Test Logs and Results
           command: |
             docker cp test-container:/test-results/test-output.log test-output.log || echo "No test log found"
+            docker cp test-container:/test-results/test-output.xml test-output.xml || echo "No test result XML found"
       - run:
           name: Remove Test Container
           command: |
@@ -55,6 +56,8 @@ jobs:
           key: docker-layer-cache-{{ .Branch }}-{{ .Revision }}
           paths:
             - /tmp/.buildx-cache
+      - store_test_results:
+          path: test-output.xml
       - store_artifacts:
           path: test-output.log
           destination: test-output.log
@@ -64,7 +67,7 @@ jobs:
       - image: docker:20.10.7
     steps:
       - setup_remote_docker:
-          version: 20.10.7
+          version: 23.0.1
           docker_layer_caching: true
       - checkout
       - run:

@@ -25,11 +25,12 @@ WORKDIR /app
 
 COPY --from=build-stage /app /app
 
+# Install go-junit-report to convert test output to JUnit XML
+RUN go install github.com/jstemmer/go-junit-report@latest
+
 # Run tests and save the output to a log file
 RUN mkdir -p /test-results
-RUN touch /test-results/test-output.log
-
-RUN go test -v ./... | tee /test-results/test-output.log
+RUN go test -v ./... 2>&1 | tee /test-results/test-output.log | go-junit-report > /test-results/test-output.xml
 # Ensure that the container exits with the test command's exit code
 RUN test_result=$? && exit $test_result
 
